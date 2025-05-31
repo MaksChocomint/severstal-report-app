@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Report {
+  id                  Int    @id @default(autoincrement())
+  ladlePassportNumber String // "№ 29 - 27 Тн"
+
+  // Раздел торкретирования
+  arrivalDate            DateTime // "Прибытие на участок: 28.05.2025 09:21"
+  torcretingDate         DateTime
+  mixtures               String // "Маг-75" (форматированная строка)
+  assemblyHandoverDate   DateTime
+  thermalBlockDistance   Int // "0" (расстояние от днища)
+  thermalBlockProtrusion Int // "0" (длина выступающей части)
+  thermalBlockCondition  String?
+
+  // Раздел сборки
+  doserCupType              String
+  doserCupInstaller         String
+  stopperMonoblockType      String
+  stopperMonoblockInstaller String
+  valve1                    String // "3 СТОП.МЕХ 1: 17"
+  valve2                    String // "2 СТОП.МЕХ 2: 6"
+  turbostop                 String? // "Турбостоп (АО «БКО»)"
+
+  // Раздел разливки (единичный объект)
+  pouringHandoverDateTime DateTime
+  heatingStartDateTime    DateTime
+  heatingDuration         String // "03:34:49"
+  operatorName            String // "Ефремов М.Б."
+
+  // Детали первой плавки (из "Начало" на картинке)
+  pour1MeltNumber     String
+  pour1Unrs           String
+  pour1StartDateTime  DateTime
+  pour1EndDateTime    DateTime
+  pour1SeriesPosition String
+  pour1LadleStability Int // Only the number, e.g., 1
+
+  // Детали второй плавки (из "Окончание" на картинке)
+  pour2MeltNumber     String
+  pour2StartDateTime  DateTime
+  pour2EndDateTime    DateTime
+  pour2LadleStability Int // Only the number, e.g., 10
+
+  // Замечания
+  torcretingRemarks String?
+  assemblyRemarks   String?
+  heatingRemarks    String?
+  pouringRemarks    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Removed the Melt model as per requirement
