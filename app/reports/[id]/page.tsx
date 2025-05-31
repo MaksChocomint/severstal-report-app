@@ -1,8 +1,8 @@
 // app/reports/[id]/page.tsx
-
 import prisma from "@/lib/prisma";
 import ReportView from "@/components/ReportView";
 import PDFDownloadButton from "@/components/PDFDownloadButton";
+import BackArrow from "@/components/UI/BackArrow";
 
 export default async function ReportPage({
   params,
@@ -22,7 +22,10 @@ export default async function ReportPage({
     <div className="max-w-4xl mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Паспорт промковша</h1>
-        <PDFDownloadButton reportId={report.id} />
+        <div className="flex gap-2">
+          <PDFDownloadButton reportId={report.id} />
+          <BackArrow />
+        </div>
       </div>
 
       <div className="bg-white rounded-lg shadow p-6">
