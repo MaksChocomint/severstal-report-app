@@ -22,7 +22,6 @@ const ReportView: React.FC<{ report: Report }> = ({ report }) => {
         <h1 className="text-xl font-bold uppercase">
           Паспорт промковша {report.ladlePassportNumber}
         </h1>
-        {/* Removed report.meltDetails as it's no longer a direct property */}
       </div>
 
       <p className="mb-3">

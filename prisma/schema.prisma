@@ -12,11 +12,20 @@ model Report {
   id                  Int    @id @default(autoincrement())
   ladlePassportNumber String // "№ 29 - 27 Тн"
 
+  // Раздел плавки
+  meltNumber         Int // "Плавка № 29"
+  meltUnrs           Int // "УНРС: 27"
+  meltStartDateTime  DateTime // "начало: 28.05.2025 05:05"
+  meltEndDateTime    DateTime // "окончание: 28.05.2025 09:21"
+  meltLadleStability Int // "Стойкость ПК: 4" 
+
   // Раздел торкретирования
-  arrivalDate            DateTime // "Прибытие на участок: 28.05.2025 09:21"
-  torcretingDate         DateTime
-  mixtures               String // "Маг-75" (форматированная строка)
-  assemblyHandoverDate   DateTime
+  arrivalDate          DateTime // "Прибытие на участок: 28.05.2025 09:21"
+  torcretingDate       DateTime
+  mixtures             String // "Маг-75" (форматированная строка)
+  assemblyHandoverDate DateTime
+
+  // Раздел расположения термоблоков
   thermalBlockDistance   Int // "0" (расстояние от днища)
   thermalBlockProtrusion Int // "0" (длина выступающей части)
   thermalBlockCondition  String?
@@ -37,15 +46,15 @@ model Report {
   operatorName            String // "Ефремов М.Б."
 
   // Детали первой плавки (из "Начало" на картинке)
-  pour1MeltNumber     String
-  pour1Unrs           String
+  pour1MeltNumber     Int
+  pour1Unrs           Int
   pour1StartDateTime  DateTime
   pour1EndDateTime    DateTime
   pour1SeriesPosition String
-  pour1LadleStability Int // Only the number, e.g., 1
+  pour1LadleStability Int
 
   // Детали второй плавки (из "Окончание" на картинке)
-  pour2MeltNumber     String
+  pour2MeltNumber     Int
   pour2StartDateTime  DateTime
   pour2EndDateTime    DateTime
   pour2LadleStability Int // Only the number, e.g., 10
