@@ -1,14 +1,25 @@
 // components/ReportForm.tsx
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { format } from "date-fns";
-import { ru } from "date-fns/locale";
-import axios from "axios"; // Import axios
+import axios from "axios";
+import Modal from "react-modal"; // Import Modal
+import {
+  mixtureOptions,
+  doserCupTypeOptions,
+  stopperMonoblockTypeOptions,
+} from "@/constants/reportFormOptions";
 
 import {
   convertDateTimeLocalToISO,
   getInitialDateTimeForInput,
 } from "@/lib/utils";
+
+// Set app element for react-modal
+// This is important for accessibility reasons.
+// You might want to do this once in your root component or index.tsx/App.tsx
+if (typeof window !== "undefined") {
+  Modal.setAppElement("#__next"); // Assuming Next.js default root element ID
+}
 
 const inputBaseClasses =
   "block w-full rounded-md border-slate-300 py-2.5 px-3.5 text-sm text-slate-900 shadow-sm placeholder-slate-400 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500";
@@ -19,15 +30,6 @@ const sectionTitleInCardClasses =
   "text-base font-semibold text-slate-800 mb-4 border-b border-slate-200 pb-2.5";
 const mainSectionDividerContainerClasses = "relative my-8";
 
-const formatDateTimeForDisplay = (dateTimeString: string): string => {
-  if (!dateTimeString) return "N/A";
-  try {
-    return format(new Date(dateTimeString), "dd/MM/yy HH:mm", { locale: ru });
-  } catch {
-    return "Invalid Date";
-  }
-};
-
 export default function ReportForm({
   onSuccess,
 }: {
@@ -35,48 +37,64 @@ export default function ReportForm({
 }) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [modalIsOpen, setModalIsOpen] = useState(false); // State for modal visibility
+  const [modalMessage, setModalMessage] = useState(""); // State for modal message
+  const [modalSuccess, setModalSuccess] = useState(true); // State for success/error modal styling
+  const [createdReportId, setCreatedReportId] = useState<number | null>(null); // State to store the ID of the created report
 
   const initialDateTimeLocal = getInitialDateTimeForInput(0);
 
   const initialFormData = {
     ladlePassportNumber: "№ 29 - 27 Тн",
-    torcretingDate: initialDateTimeLocal,
-    mixtures: "Маг-75",
+
+    // Раздел плавки
+    meltNumber: 29,
+    meltUnrs: 27,
+    meltStartDateTime: "2025-05-28T05:05",
+    meltEndDateTime: "2025-05-28T09:21",
+    meltLadleStability: 4,
+
+    // Раздел торкретирования
     arrivalDate: initialDateTimeLocal,
+    torcretingDate: initialDateTimeLocal,
+    mixtures: mixtureOptions[0],
     assemblyHandoverDate: initialDateTimeLocal,
+
+    // Раздел расположения термоблоков
     thermalBlockDistance: 0,
     thermalBlockProtrusion: 0,
-    thermalBlockCondition: "",
+    thermalBlockCondition: "Удовлетворительное",
 
-    doserCupType: "Синореф", // Тип стакана-дозатора
-    doserCupInstaller: "Матюшев", // Установщик стакана-дозатора
-    stopperMonoblockType: "IFGL", // Тип стопора-моноблока
-    stopperMonoblockInstaller: "Комилов", // Установщик стопора-моноблока
-
+    // Раздел сборки
+    doserCupType: doserCupTypeOptions[0],
+    doserCupInstaller: "Матюшев",
+    stopperMonoblockType: stopperMonoblockTypeOptions[0],
+    stopperMonoblockInstaller: "Комилов",
     valve1: "3 СТОП.МЕХ 1: 17",
     valve2: "2 СТОП.МЕХ 2: 6",
     turbostop: "АО «БКО»",
 
-    // Pouring/Razlivka Section
+    // Раздел разливки
     pouringHandoverDateTime: initialDateTimeLocal,
     heatingStartDateTime: initialDateTimeLocal,
     heatingDuration: "03:34:49",
     operatorName: "Ефремов М.Б.",
 
-    // Details for the first pouring event (from "Начало" on image)
-    pour1MeltNumber: "153205",
-    pour1Unrs: "3",
-    pour1StartDateTime: "2025-05-30T01:14", // Example value, adjust if needed
-    pour1EndDateTime: "2025-05-30T02:31", // Example value, adjust if needed
+    // Детали первой разливки
+    pour1MeltNumber: 153205,
+    pour1Unrs: 3,
+    pour1StartDateTime: "2025-05-30T01:14",
+    pour1EndDateTime: "2025-05-30T02:31",
     pour1SeriesPosition: "1",
-    pour1LadleStability: 1, // Only the number
+    pour1LadleStability: 1,
 
-    // Details for the second pouring event (from "Окончание" on image)
-    pour2MeltNumber: "153218",
-    pour2StartDateTime: "2025-05-30T12:36", // Example value, adjust if needed
-    pour2EndDateTime: "2025-05-30T13:48", // Example value, adjust if needed
-    pour2LadleStability: 10, // Only the number
+    // Детали второй разливки
+    pour2MeltNumber: 153218,
+    pour2StartDateTime: "2025-05-30T12:36",
+    pour2EndDateTime: "2025-05-30T13:48",
+    pour2LadleStability: 10,
 
+    // Замечания
     torcretingRemarks: "",
     assemblyRemarks: "",
     heatingRemarks: "",
@@ -84,28 +102,6 @@ export default function ReportForm({
   };
 
   const [formData, setFormData] = useState(initialFormData);
-
-  // Adjusted generatedMeltDetails to reflect the new structure
-  const generatedMeltDetails = useMemo(() => {
-    // We'll display details for the first pouring event here
-    const {
-      pour1MeltNumber,
-      pour1Unrs,
-      pour1StartDateTime,
-      pour1LadleStability,
-    } = formData;
-    if (
-      pour1MeltNumber &&
-      pour1Unrs &&
-      pour1StartDateTime &&
-      pour1LadleStability !== undefined
-    ) {
-      return `На плавку № ${pour1MeltNumber} УНРС: ${pour1Unrs} начало: ${formatDateTimeForDisplay(
-        pour1StartDateTime
-      )} Стойкость ПК ${pour1LadleStability}`;
-    }
-    return "Детали первой плавки будут отображены здесь после ввода данных.";
-  }, [formData]); // Dependency on formData
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -115,8 +111,29 @@ export default function ReportForm({
     const { name, value, type } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "number" ? parseInt(value) : value,
+      [name]: type === "number" ? (value === "" ? 0 : parseInt(value)) : value,
     }));
+  };
+
+  const openModal = (
+    message: string,
+    isSuccess: boolean,
+    reportId?: number
+  ) => {
+    setModalMessage(message);
+    setModalSuccess(isSuccess);
+    setCreatedReportId(reportId || null);
+    setModalIsOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalIsOpen(false);
+    setModalMessage("");
+    setCreatedReportId(null);
+    if (modalSuccess && createdReportId) {
+      if (onSuccess) onSuccess(createdReportId);
+      else router.push(`/reports/${createdReportId}`);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -125,8 +142,11 @@ export default function ReportForm({
 
     const processedFormData = {
       ...formData,
-      torcretingDate: convertDateTimeLocalToISO(formData.torcretingDate),
+      // ISO format
+      meltStartDateTime: convertDateTimeLocalToISO(formData.meltStartDateTime),
+      meltEndDateTime: convertDateTimeLocalToISO(formData.meltEndDateTime),
       arrivalDate: convertDateTimeLocalToISO(formData.arrivalDate),
+      torcretingDate: convertDateTimeLocalToISO(formData.torcretingDate),
       assemblyHandoverDate: convertDateTimeLocalToISO(
         formData.assemblyHandoverDate
       ),
@@ -136,7 +156,6 @@ export default function ReportForm({
       heatingStartDateTime: convertDateTimeLocalToISO(
         formData.heatingStartDateTime
       ),
-      // Convert pouring date-times to ISO
       pour1StartDateTime: convertDateTimeLocalToISO(
         formData.pour1StartDateTime
       ),
@@ -145,8 +164,17 @@ export default function ReportForm({
         formData.pour2StartDateTime
       ),
       pour2EndDateTime: convertDateTimeLocalToISO(formData.pour2EndDateTime),
-      // Ensure ladleStability values are numbers
+
+      // Ensure all Int fields are numbers
+      meltNumber: Number(formData.meltNumber),
+      meltUnrs: Number(formData.meltUnrs),
+      meltLadleStability: Number(formData.meltLadleStability),
+      thermalBlockDistance: Number(formData.thermalBlockDistance),
+      thermalBlockProtrusion: Number(formData.thermalBlockProtrusion),
+      pour1MeltNumber: Number(formData.pour1MeltNumber),
+      pour1Unrs: Number(formData.pour1Unrs),
       pour1LadleStability: Number(formData.pour1LadleStability),
+      pour2MeltNumber: Number(formData.pour2MeltNumber),
       pour2LadleStability: Number(formData.pour2LadleStability),
     };
 
@@ -157,9 +185,7 @@ export default function ReportForm({
 
       if (response.status === 200 || response.status === 201) {
         const report = response.data;
-        alert("Отчет успешно сохранен!");
-        if (onSuccess) onSuccess(report.id);
-        else router.push(`/reports/${report.id}`);
+        openModal("Отчет успешно сохранен!", true, report.id); // Open success modal
       } else {
         const errorData = response.data;
         console.error("Server error data:", errorData);
@@ -181,7 +207,7 @@ export default function ReportForm({
       } else if (error instanceof Error) {
         errorMessage = error.message;
       }
-      alert(errorMessage);
+      openModal(errorMessage, false); // Open error modal
     } finally {
       setIsSubmitting(false);
     }
@@ -209,12 +235,6 @@ export default function ReportForm({
         <h1 className="text-2xl font-semibold text-slate-900 text-center mb-6">
           Паспорт промковша
         </h1>
-
-        {/* Отображение генерируемых деталей плавки (для первой плавки) */}
-        <div className="mb-6 p-3 bg-slate-100 rounded-md border border-slate-200 text-sm text-slate-700">
-          <p className="font-semibold">Информация по первой разливке:</p>
-          <p>{generatedMeltDetails}</p>
-        </div>
 
         {/* --- Основная информация --- */}
         <MainSectionDivider title="Основная информация" />
@@ -250,6 +270,84 @@ export default function ReportForm({
           </div>
         </div>
 
+        {/* --- Раздел плавки --- */}
+        <MainSectionDivider title="Раздел плавки" />
+        <div className={sectionCardClasses}>
+          <h3 className={sectionTitleInCardClasses}>Детали плавки</h3>
+          <div className="space-y-5">
+            <div>
+              <label htmlFor="meltNumber" className={labelClasses}>
+                Плавка №
+              </label>
+              <input
+                type="number"
+                id="meltNumber"
+                name="meltNumber"
+                value={formData.meltNumber}
+                onChange={handleChange}
+                className={`${inputBaseClasses} bg-white`}
+                required
+              />
+            </div>
+            <div>
+              <label htmlFor="meltUnrs" className={labelClasses}>
+                УНРС
+              </label>
+              <input
+                type="number"
+                id="meltUnrs"
+                name="meltUnrs"
+                value={formData.meltUnrs}
+                onChange={handleChange}
+                className={`${inputBaseClasses} bg-white`}
+                required
+              />
+            </div>
+            <div>
+              <label htmlFor="meltStartDateTime" className={labelClasses}>
+                Начало
+              </label>
+              <input
+                type="datetime-local"
+                id="meltStartDateTime"
+                name="meltStartDateTime"
+                value={formData.meltStartDateTime}
+                onChange={handleChange}
+                className={`${inputBaseClasses} bg-white`}
+                required
+              />
+            </div>
+            <div>
+              <label htmlFor="meltEndDateTime" className={labelClasses}>
+                Окончание
+              </label>
+              <input
+                type="datetime-local"
+                id="meltEndDateTime"
+                name="meltEndDateTime"
+                value={formData.meltEndDateTime}
+                onChange={handleChange}
+                className={`${inputBaseClasses} bg-white`}
+                required
+              />
+            </div>
+            <div>
+              <label htmlFor="meltLadleStability" className={labelClasses}>
+                Стойкость ПК
+              </label>
+              <input
+                type="number"
+                id="meltLadleStability"
+                name="meltLadleStability"
+                value={formData.meltLadleStability}
+                onChange={handleChange}
+                className={`${inputBaseClasses} bg-white`}
+                required
+              />
+            </div>
+          </div>
+        </div>
+
         {/* --- Торкретирование и сборка ПК --- */}
         <MainSectionDivider title="Торкретирование и сборка ПК" />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
@@ -274,15 +372,20 @@ export default function ReportForm({
                 <label htmlFor="mixtures" className={labelClasses}>
                   Смеси
                 </label>
-                <input
-                  type="text"
+                <select
                   id="mixtures"
                   name="mixtures"
                   value={formData.mixtures}
                   onChange={handleChange}
                   className={`${inputBaseClasses} bg-white`}
                   required
-                />
+                >
+                  {mixtureOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label htmlFor="assemblyHandoverDate" className={labelClasses}>
@@ -356,15 +459,20 @@ export default function ReportForm({
                 <label htmlFor="doserCupType" className={labelClasses}>
                   Тип стаканов-дозаторов
                 </label>
-                <input
-                  type="text"
+                <select
                   id="doserCupType"
                   name="doserCupType"
                   value={formData.doserCupType}
                   onChange={handleChange}
                   className={`${inputBaseClasses} bg-white`}
                   required
-                />
+                >
+                  {doserCupTypeOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label htmlFor="doserCupInstaller" className={labelClasses}>
@@ -385,15 +493,20 @@ export default function ReportForm({
                 <label htmlFor="stopperMonoblockType" className={labelClasses}>
                   Тип стопора-моноблока
                 </label>
-                <input
-                  type="text"
+                <select
                   id="stopperMonoblockType"
                   name="stopperMonoblockType"
                   value={formData.stopperMonoblockType}
                   onChange={handleChange}
                   className={`${inputBaseClasses} bg-white`}
                   required
-                />
+                >
+                  {stopperMonoblockTypeOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label
@@ -535,7 +648,7 @@ export default function ReportForm({
                   Плавка № (1)
                 </label>
                 <input
-                  type="text"
+                  type="number"
                   id="pour1MeltNumber"
                   name="pour1MeltNumber"
                   value={formData.pour1MeltNumber}
@@ -549,7 +662,7 @@ export default function ReportForm({
                   УНРС (1)
                 </label>
                 <input
-                  type="text"
+                  type="number"
                   id="pour1Unrs"
                   name="pour1Unrs"
                   value={formData.pour1Unrs}
@@ -624,7 +737,7 @@ export default function ReportForm({
                   Плавка № (2)
                 </label>
                 <input
-                  type="text"
+                  type="number"
                   id="pour2MeltNumber"
                   name="pour2MeltNumber"
                   value={formData.pour2MeltNumber}
@@ -754,6 +867,43 @@ export default function ReportForm({
           </button>
         </div>
       </form>
+
+      {/* Success/Error Modal */}
+      <Modal
+        isOpen={modalIsOpen}
+        onRequestClose={closeModal}
+        contentLabel="Сообщение о сохранении отчета"
+        className="flex items-center justify-center p-4"
+        overlayClassName="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
+      >
+        <div
+          className={`bg-white rounded-lg shadow-xl p-6 max-w-sm mx-auto text-center ${
+            modalSuccess
+              ? "border-t-4 border-green-500"
+              : "border-t-4 border-red-500"
+          }`}
+        >
+          <h2
+            className={`text-xl font-semibold mb-3 ${
+              modalSuccess ? "text-green-700" : "text-red-700"
+            }`}
+          >
+            {modalSuccess ? "Успех!" : "Ошибка!"}
+          </h2>
+          <p className="text-slate-700 mb-5">{modalMessage}</p>
+          <button
+            onClick={closeModal}
+            className={`py-2 px-4 rounded-md text-white font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2
+              ${
+                modalSuccess
+                  ? "bg-green-600 hover:bg-green-700 focus:ring-green-500"
+                  : "bg-red-600 hover:bg-red-700 focus:ring-red-500"
+              }`}
+          >
+            {modalSuccess ? "Продолжить" : "Закрыть"}
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

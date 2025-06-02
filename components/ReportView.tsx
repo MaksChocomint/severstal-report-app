@@ -22,6 +22,16 @@ const ReportView: React.FC<{ report: Report }> = ({ report }) => {
         <h1 className="text-xl font-bold uppercase">
           Паспорт промковша {report.ladlePassportNumber}
         </h1>
+
+        {report.meltNumber && (
+          <p className="text-sm mt-2">
+            на плавку № {report.meltNumber} УНРС: {report.meltUnrs} начало:{" "}
+            {format(new Date(report.meltStartDateTime), "dd/MM/yy HH:mm", {
+              locale: ru,
+            })}{" "}
+            Стойкость ПК {report.meltLadleStability}
+          </p>
+        )}
       </div>
 
       <p className="mb-3">
@@ -145,7 +155,7 @@ const ReportView: React.FC<{ report: Report }> = ({ report }) => {
             </div>
           </div>
 
-          {/* Детали Разливки (Плавки) - First Pouring Event */}
+          {/* Детали Разливки (Плавки) */}
           <div>
             <h3 className="font-semibold uppercase mb-2 text-sm">
               РАЗЛИВКА (Начало)
@@ -185,7 +195,7 @@ const ReportView: React.FC<{ report: Report }> = ({ report }) => {
               </div>
             </div>
 
-            {/* Детали Разливки (Плавки) - Second Pouring Event */}
+            {/* Детали Разливки (Плавки) */}
             <h3 className="font-semibold uppercase mb-2 mt-4 text-sm">
               РАЗЛИВКА (Окончание)
             </h3>

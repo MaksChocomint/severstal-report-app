@@ -9,11 +9,15 @@ import {
   Filter as FilterIcon,
   ChevronLeft,
   ChevronRight,
-} from "lucide-react"; // Renamed Filter to FilterIcon
-import { format, isToday, isThisWeek, isThisMonth } from "date-fns"; // Added date-fns functions
+  ArrowUpNarrowWide,
+  ArrowDownWideNarrow,
+} from "lucide-react";
+import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import React, { useState, useMemo } from "react"; // Added useState, useMemo
+import React, { useState, useEffect, useCallback } from "react";
+import axios from "axios";
 
+// --- Reusable UI Components (no changes needed here from previous version) ---
 const Button = ({
   variant,
   size,
@@ -35,7 +39,7 @@ const Button = ({
       variantStyle = "hover:bg-accent hover:text-accent-foreground";
       break;
     default: // primary / default
-      variantStyle = "bg-blue-600 text-white hover:bg-blue-700"; // Adjusted for clarity
+      variantStyle = "bg-blue-600 text-white hover:bg-blue-700";
   }
   const sizeStyle = size === "sm" ? "h-9 px-3" : "h-10 py-2 px-4";
 
@@ -55,7 +59,6 @@ const Button = ({
   );
 };
 
-// Placeholders for shadcn/ui Table Components
 const Table = ({
   className,
   ...props
@@ -109,7 +112,6 @@ const TableCell = ({
   />
 );
 
-// Placeholders for shadcn/ui DropdownMenu (with state for open/close)
 const DropdownMenu = ({ children }: { children: React.ReactNode }) => {
   const [isOpen, setIsOpen] = useState(false);
   const triggerRef = React.useRef<HTMLDivElement>(null);
@@ -134,18 +136,19 @@ const DropdownMenu = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div className="relative inline-block text-left">
-      {/* Trigger */}
       {React.Children.map(children, (child) => {
-        if (React.isValidElement(child) && child.type === DropdownMenuTrigger) {
+        if (
+          React.isValidElement(child) &&
+          (child.type as any).displayName === "DropdownMenuTrigger"
+        ) {
           return React.cloneElement(child, {
             onClick: () => setIsOpen(!isOpen),
-            ref: triggerRef, // Attach ref to trigger
+            ref: triggerRef,
           } as React.HTMLProps<HTMLElement>);
         }
         return null;
       })}
 
-      {/* Content */}
       {isOpen && (
         <div
           ref={contentRef}
@@ -154,7 +157,7 @@ const DropdownMenu = ({ children }: { children: React.ReactNode }) => {
           {React.Children.map(children, (child) => {
             if (
               React.isValidElement(child) &&
-              child.type === DropdownMenuContent
+              (child.type as any).displayName === "DropdownMenuContent"
             ) {
               return React.cloneElement(child, {
                 onClose: () => setIsOpen(false),
@@ -168,28 +171,29 @@ const DropdownMenu = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-const DropdownMenuTrigger = ({
-  children,
-  asChild,
-  onClick,
-  ...props
-}: {
-  children: React.ReactNode;
-  asChild?: boolean;
-  onClick?: () => void;
-}) => {
+const DropdownMenuTrigger = React.forwardRef<
+  HTMLButtonElement,
+  {
+    children: React.ReactNode;
+    asChild?: boolean;
+    onClick?: () => void;
+  }
+>(({ children, asChild, onClick, ...props }, ref) => {
   if (asChild && React.isValidElement(children)) {
+    // Only pass ref if the child is a valid React element and supports ref
     return React.cloneElement(children, {
       ...(onClick ? { onClick } : {}),
       ...props,
+      ...(ref ? { ref } : {}),
     });
   }
   return (
-    <button onClick={onClick} {...props}>
+    <button ref={ref} onClick={onClick} {...props}>
       {children}
     </button>
   );
-};
+});
+DropdownMenuTrigger.displayName = "DropdownMenuTrigger";
 
 const DropdownMenuContent = ({
   children,
@@ -202,29 +206,37 @@ const DropdownMenuContent = ({
     {React.Children.map(children, (child) =>
       React.isValidElement(child)
         ? React.cloneElement(child, {
-            onClick: onClose,
+            onClick: () => {
+              (child.props as any).onClick?.(); // Call original onClick if it exists
+              onClose?.(); // Then close the dropdown
+            },
           } as React.HTMLProps<HTMLElement>)
         : child
     )}
   </div>
 );
+DropdownMenuContent.displayName = "DropdownMenuContent";
 
 const DropdownMenuItem = ({
   children,
   onClick,
+  className,
+  ...props
 }: {
   children: React.ReactNode;
   onClick?: () => void;
+  className?: string;
 }) => (
   <button
     onClick={onClick}
-    className="block w-full text-left px-2 py-2 text-sm text-gray-700 border-b rounded-b-none last:border-0 hover:bg-gray-100 rounded-md cursor-pointer"
+    className={`block w-full text-left px-2 py-2 text-sm text-gray-700 border-b rounded-b-none last:border-0 hover:bg-gray-100 rounded-md cursor-pointer ${className}`}
+    {...props}
   >
     {children}
   </button>
 );
+DropdownMenuItem.displayName = "DropdownMenuItem";
 
-// Placeholder for shadcn/ui Input
 const Input = React.forwardRef<
   HTMLInputElement,
   React.InputHTMLAttributes<HTMLInputElement>
@@ -239,142 +251,89 @@ const Input = React.forwardRef<
 });
 Input.displayName = "Input";
 
-// Updated Report interface to reflect the new structure (remove meltDetails)
+// Updated Report interface to reflect the desired "melt" fields
 interface Report {
   id: number;
   ladlePassportNumber: string;
-  // Removed meltDetails as it's no longer a direct property
-  arrivalDate: Date;
-  pouringHandoverDateTime: Date;
+  arrivalDate: string;
+  pouringHandoverDateTime: string;
   operatorName: string;
-  // Add these fields to match your new Prisma schema for display purposes
-  pour1MeltNumber: string;
-  pour1Unrs: string;
-  pour1StartDateTime: Date;
-  pour1LadleStability: number;
+  meltNumber: string;
+  meltUnrs: string;
+  meltStartDateTime: string;
+  meltLadleStability: number;
 }
 
-const mockReports: Report[] = [
-  {
-    id: 1,
-    ladlePassportNumber: "№ 29 - 27 Тн",
-    pour1MeltNumber: "153210",
-    pour1Unrs: "3",
-    pour1StartDateTime: new Date("2025-05-30T05:05:00"),
-    pour1LadleStability: 4,
-    arrivalDate: new Date("2025-05-28T09:21:00"),
-    pouringHandoverDateTime: new Date("2025-05-29T21:30:00"),
-    operatorName: "Ефремов М.Б.",
-  },
-  {
-    id: 2,
-    ladlePassportNumber: "№ 30 - 28 Тн",
-    pour1MeltNumber: "153211",
-    pour1Unrs: "2",
-    pour1StartDateTime: new Date("2025-05-30T08:15:00"),
-    pour1LadleStability: 3,
-    arrivalDate: new Date("2025-05-28T11:45:00"),
-    pouringHandoverDateTime: new Date("2025-05-30T01:20:00"),
-    operatorName: "Комилов А.С.",
-  },
-  {
-    id: 3,
-    ladlePassportNumber: "№ 31 - 29 Тн",
-    pour1MeltNumber: "153212",
-    pour1Unrs: "1",
-    pour1StartDateTime: new Date("2025-05-30T12:30:00"),
-    pour1LadleStability: 5,
-    arrivalDate: new Date("2025-05-29T08:10:00"),
-    pouringHandoverDateTime: new Date("2025-05-30T15:45:00"),
-    operatorName: "Матюшев П.Д.",
-  },
-  {
-    id: 4,
-    ladlePassportNumber: "№ 32 - 30 Тн",
-    pour1MeltNumber: "153213",
-    pour1Unrs: "4",
-    pour1StartDateTime: new Date("2025-05-31T01:00:00"), // Today
-    pour1LadleStability: 2,
-    arrivalDate: new Date("2025-05-30T10:00:00"),
-    pouringHandoverDateTime: new Date("2025-05-31T03:00:00"),
-    operatorName: "Иванов И.И.",
-  },
-  {
-    id: 5,
-    ladlePassportNumber: "№ 33 - 31 Тн",
-    pour1MeltNumber: "153214",
-    pour1Unrs: "5",
-    pour1StartDateTime: new Date("2025-05-27T10:00:00"), // Last week (depends on current week)
-    pour1LadleStability: 6,
-    arrivalDate: new Date("2025-05-26T09:00:00"),
-    pouringHandoverDateTime: new Date("2025-05-27T12:00:00"),
-    operatorName: "Петров П.П.",
-  },
-  {
-    id: 6,
-    ladlePassportNumber: "№ 34 - 32 Тн",
-    pour1MeltNumber: "153215",
-    pour1Unrs: "6",
-    pour1StartDateTime: new Date("2025-04-15T10:00:00"), // Last month (depends on current month)
-    pour1LadleStability: 7,
-    arrivalDate: new Date("2025-04-14T09:00:00"),
-    pouringHandoverDateTime: new Date("2025-04-15T12:00:00"),
-    operatorName: "Сидоров С.С.",
-  },
-];
-
 export default function ReportsPage() {
+  const [reports, setReports] = useState<Report[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState<"all" | "today" | "week" | "month">(
     "all"
   );
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5; // Number of reports per page
+  const [totalReportsCount, setTotalReportsCount] = useState(0);
+  const [sortBy, setSortBy] = useState<keyof Report>("arrivalDate"); // Default sort by arrivalDate
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc"); // Default descending
 
-  const formatDate = (date: Date) =>
-    format(date, "dd.MM.yyyy HH:mm", { locale: ru });
+  const itemsPerPage = 5;
 
-  // Filtered and Paginated Reports
-  const filteredReports = useMemo(() => {
-    let tempReports = mockReports;
-
-    // Apply search filter
-    if (searchTerm) {
-      tempReports = tempReports.filter(
-        (report) =>
-          report.ladlePassportNumber
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase()) ||
-          report.pour1MeltNumber
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase())
-      );
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    // Ensure date is valid before formatting
+    if (isNaN(date.getTime())) {
+      return "Invalid Date";
     }
+    return format(date, "dd.MM.yyyy HH:mm", { locale: ru });
+  };
 
-    // Apply date filter
-    if (filter === "today") {
-      tempReports = tempReports.filter((report) =>
-        isToday(report.pouringHandoverDateTime)
+  const fetchReports = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const offset = (currentPage - 1) * itemsPerPage;
+      const response = await axios.get("/api/reports", {
+        params: {
+          limit: itemsPerPage,
+          offset: offset,
+          search: searchTerm,
+          filter: filter,
+          sortBy: sortBy,
+          sortOrder: sortOrder,
+        },
+      });
+
+      const fetchedReports: Report[] = response.data.reports.map(
+        (report: any) => ({
+          id: report.id,
+          ladlePassportNumber: report.ladlePassportNumber,
+          arrivalDate: report.arrivalDate,
+          pouringHandoverDateTime: report.pouringHandoverDateTime,
+          operatorName: report.operatorName,
+          // Make sure these field names match your Prisma schema exactly
+          meltNumber: report.meltNumber,
+          meltUnrs: report.meltUnrs,
+          meltStartDateTime: report.meltStartDateTime,
+          meltLadleStability: report.meltLadleStability,
+        })
       );
-    } else if (filter === "week") {
-      tempReports = tempReports.filter((report) =>
-        isThisWeek(report.pouringHandoverDateTime, { weekStartsOn: 1 })
-      ); // Monday as start of week
-    } else if (filter === "month") {
-      tempReports = tempReports.filter((report) =>
-        isThisMonth(report.pouringHandoverDateTime)
-      );
+
+      setReports(fetchedReports);
+      setTotalReportsCount(response.data.totalReports);
+    } catch (err) {
+      console.error("Failed to fetch reports:", err);
+      setError("Не удалось загрузить отчеты. Попробуйте еще раз.");
+    } finally {
+      setLoading(false);
     }
+  }, [currentPage, itemsPerPage, searchTerm, filter, sortBy, sortOrder]);
 
-    return tempReports;
-  }, [searchTerm, filter]);
+  useEffect(() => {
+    fetchReports();
+  }, [fetchReports]);
 
-  const totalPages = Math.ceil(filteredReports.length / itemsPerPage);
-  const paginatedReports = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return filteredReports.slice(startIndex, endIndex);
-  }, [filteredReports, currentPage, itemsPerPage]);
+  const totalPages = Math.ceil(totalReportsCount / itemsPerPage);
 
   const handlePageChange = (page: number) => {
     if (page > 0 && page <= totalPages) {
@@ -382,7 +341,50 @@ export default function ReportsPage() {
     }
   };
 
-  // Define Tailwind classes for elements used by shadcn/ui-like components
+  const handleFilterChange = (
+    newFilter: "all" | "today" | "week" | "month"
+  ) => {
+    setFilter(newFilter);
+    setCurrentPage(1); // Reset to first page on filter change
+  };
+
+  const handleSortChange = (field: keyof Report) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(field);
+      setSortOrder("desc"); // Default to descending when changing sort field
+    }
+    setCurrentPage(1); // Reset to first page on sort change
+  };
+
+  const getFilterLabel = (currentFilter: typeof filter) => {
+    switch (currentFilter) {
+      case "today":
+        return "За сегодня";
+      case "week":
+        return "За неделю";
+      case "month":
+        return "За месяц";
+      default:
+        return "Все отчеты";
+    }
+  };
+
+  const getSortLabel = (currentSortBy: keyof Report) => {
+    switch (currentSortBy) {
+      case "ladlePassportNumber":
+        return "№ Промковша";
+      case "meltNumber":
+        return "№ Плавка";
+      case "operatorName":
+        return "Оператор";
+      case "arrivalDate":
+      default:
+        return "Дата прибытия";
+    }
+  };
+
   const primaryButtonClasses = "bg-blue-600 text-white hover:bg-blue-700";
   const outlineButtonClasses =
     "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50";
@@ -409,7 +411,6 @@ export default function ReportsPage() {
         </Link>
       </div>
 
-      {/* Filters and Search */}
       <div className="flex flex-col md:flex-row gap-4 items-center p-4 bg-white rounded-lg shadow">
         <div className="relative flex-grow w-full md:w-auto">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
@@ -417,9 +418,14 @@ export default function ReportsPage() {
             placeholder="Поиск по номеру промковша или плавки..."
             className={`pl-10 pr-3 py-2 w-full ${inputClasses}`}
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
+            }}
           />
         </div>
+
+        {/* Filter Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -427,27 +433,115 @@ export default function ReportsPage() {
               className={`w-full md:w-auto ${outlineButtonClasses}`}
             >
               <FilterIcon className="h-4 w-4 mr-2" />
-              Фильтры
+              {getFilterLabel(filter)} {/* Display current filter */}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            <DropdownMenuItem onClick={() => setFilter("all")}>
+            <DropdownMenuItem
+              onClick={() => handleFilterChange("all")}
+              className={filter === "all" ? "bg-gray-100 font-semibold" : ""}
+            >
               Все отчеты
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setFilter("today")}>
+            <DropdownMenuItem
+              onClick={() => handleFilterChange("today")}
+              className={filter === "today" ? "bg-gray-100 font-semibold" : ""}
+            >
               За сегодня
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setFilter("week")}>
+            <DropdownMenuItem
+              onClick={() => handleFilterChange("week")}
+              className={filter === "week" ? "bg-gray-100 font-semibold" : ""}
+            >
               За неделю
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setFilter("month")}>
+            <DropdownMenuItem
+              onClick={() => handleFilterChange("month")}
+              className={filter === "month" ? "bg-gray-100 font-semibold" : ""}
+            >
               За месяц
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Sort by Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              className={`w-full md:w-auto ${outlineButtonClasses}`}
+            >
+              {sortOrder === "desc" ? (
+                <ArrowDownWideNarrow className="h-4 w-4 mr-2" />
+              ) : (
+                <ArrowUpNarrowWide className="h-4 w-4 mr-2" />
+              )}
+              {getSortLabel(sortBy)} {/* Display current sort field */}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem
+              onClick={() => handleSortChange("arrivalDate")}
+              className={
+                sortBy === "arrivalDate" ? "bg-gray-100 font-semibold" : ""
+              }
+            >
+              Дата прибытия{" "}
+              {sortBy === "arrivalDate" &&
+                (sortOrder === "asc" ? (
+                  <ArrowUpNarrowWide className="ml-2 h-4 w-4 inline" />
+                ) : (
+                  <ArrowDownWideNarrow className="ml-2 h-4 w-4 inline" />
+                ))}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => handleSortChange("ladlePassportNumber")}
+              className={
+                sortBy === "ladlePassportNumber"
+                  ? "bg-gray-100 font-semibold"
+                  : ""
+              }
+            >
+              № Промковша{" "}
+              {sortBy === "ladlePassportNumber" &&
+                (sortOrder === "asc" ? (
+                  <ArrowUpNarrowWide className="ml-2 h-4 w-4 inline" />
+                ) : (
+                  <ArrowDownWideNarrow className="ml-2 h-4 w-4 inline" />
+                ))}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => handleSortChange("meltNumber")}
+              className={
+                sortBy === "meltNumber" ? "bg-gray-100 font-semibold" : ""
+              }
+            >
+              № Плавка{" "}
+              {sortBy === "meltNumber" &&
+                (sortOrder === "asc" ? (
+                  <ArrowUpNarrowWide className="ml-2 h-4 w-4 inline" />
+                ) : (
+                  <ArrowDownWideNarrow className="ml-2 h-4 w-4 inline" />
+                ))}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => handleSortChange("operatorName")}
+              className={
+                sortBy === "operatorName" ? "bg-gray-100 font-semibold" : ""
+              }
+            >
+              Оператор{" "}
+              {sortBy === "operatorName" &&
+                (sortOrder === "asc" ? (
+                  <ArrowUpNarrowWide className="ml-2 h-4 w-4 inline" />
+                ) : (
+                  <ArrowDownWideNarrow className="ml-2 h-4 w-4 inline" />
+                ))}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
-      {/* Reports Table */}
       <div className="bg-white rounded-xl shadow-xl overflow-x-auto">
         <Table>
           <TableHeader>
@@ -458,13 +552,11 @@ export default function ReportsPage() {
               </TableHead>
               <TableHead className={`hidden md:table-cell ${tableHeadClasses}`}>
                 <div className="flex items-center gap-1.5">
-                  {" "}
                   <Calendar className="h-4 w-4" /> Прибытие{" "}
                 </div>
               </TableHead>
               <TableHead className={`hidden lg:table-cell ${tableHeadClasses}`}>
                 <div className="flex items-center gap-1.5">
-                  {" "}
                   <Calendar className="h-4 w-4" /> Разливка{" "}
                 </div>
               </TableHead>
@@ -477,8 +569,23 @@ export default function ReportsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedReports.length > 0 ? (
-              paginatedReports.map((report) => (
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8">
+                  Загрузка отчетов...
+                </TableCell>
+              </TableRow>
+            ) : error ? (
+              <TableRow>
+                <TableCell
+                  colSpan={6}
+                  className="text-center py-8 text-red-500"
+                >
+                  {error}
+                </TableCell>
+              </TableRow>
+            ) : reports.length > 0 ? (
+              reports.map((report) => (
                 <TableRow
                   key={report.id}
                   className="hover:bg-slate-50 transition-colors"
@@ -491,11 +598,11 @@ export default function ReportsPage() {
                   <TableCell
                     className={`max-w-xs truncate ${tableCellClasses}`}
                   >
-                    {`Плавка № ${report.pour1MeltNumber} УНРС: ${
-                      report.pour1Unrs
+                    {`Плавка № ${report.meltNumber} УНРС: ${
+                      report.meltUnrs
                     } начало: ${formatDate(
-                      report.pour1StartDateTime
-                    )} Стойкость ПК ${report.pour1LadleStability}`}
+                      report.meltStartDateTime
+                    )} Стойкость ПК ${report.meltLadleStability}`}
                   </TableCell>
                   <TableCell
                     className={`hidden md:table-cell ${tableCellClasses}`}
@@ -544,13 +651,12 @@ export default function ReportsPage() {
         </Table>
       </div>
 
-      {/* Pagination */}
       <div className="flex items-center justify-end gap-4 pt-4">
         <Button
           variant="outline"
           size="sm"
           onClick={() => handlePageChange(currentPage - 1)}
-          disabled={currentPage === 1}
+          disabled={currentPage === 1 || loading}
           className={outlineButtonClasses}
         >
           <ChevronLeft className="h-4 w-4 mr-1" />
@@ -563,7 +669,7 @@ export default function ReportsPage() {
           variant="outline"
           size="sm"
           onClick={() => handlePageChange(currentPage + 1)}
-          disabled={currentPage === totalPages || totalPages === 0}
+          disabled={currentPage === totalPages || totalPages === 0 || loading}
           className={outlineButtonClasses}
         >
           Вперед

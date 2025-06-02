@@ -1,11 +1,11 @@
 // app/page.tsx
+"use client";
 import Link from "next/link";
 import { FaFileAlt } from "react-icons/fa"; // Using react-icons
 
 export default function Home() {
   return (
     <div className="max-w-7xl mx-auto space-y-16 sm:space-y-24">
-      {/* Hero Section */}
       <section className="text-center py-16 md:py-24 bg-slate-800 rounded-xl text-white shadow-2xl">
         <div className="px-4 sm:px-6 lg:px-8">
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-6 tracking-tight">
@@ -31,7 +31,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Latest Reports Section (Placeholder) */}
       <section>
         <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
           <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">

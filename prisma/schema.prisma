@@ -37,7 +37,7 @@ model Report {
   stopperMonoblockInstaller String
   valve1                    String // "3 СТОП.МЕХ 1: 17"
   valve2                    String // "2 СТОП.МЕХ 2: 6"
-  turbostop                 String? // "Турбостоп (АО «БКО»)"
+  turbostop                 String? // "(АО «БКО»)"
 
   // Раздел разливки (единичный объект)
   pouringHandoverDateTime DateTime
@@ -57,7 +57,7 @@ model Report {
   pour2MeltNumber     Int
   pour2StartDateTime  DateTime
   pour2EndDateTime    DateTime
-  pour2LadleStability Int // Only the number, e.g., 10
+  pour2LadleStability Int
 
   // Замечания
   torcretingRemarks String?
@@ -68,5 +68,3 @@ model Report {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
-
-// Removed the Melt model as per requirement
