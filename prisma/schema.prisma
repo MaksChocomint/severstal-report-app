@@ -1,6 +1,6 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../app/generated/prisma"
+  output   = "../app/generated/prisma" // Убедитесь, что путь корректен
 }
 
 datasource db {
@@ -10,24 +10,28 @@ datasource db {
 
 model Report {
   id                  Int    @id @default(autoincrement())
-  ladlePassportNumber String // "№ 29 - 27 Тн"
+  ladlePassportNumber String
 
-  // Раздел плавки
-  meltNumber         Int // "Плавка № 29"
-  meltUnrs           Int // "УНРС: 27"
-  meltStartDateTime  DateTime // "начало: 28.05.2025 05:05"
-  meltEndDateTime    DateTime // "окончание: 28.05.2025 09:21"
-  meltLadleStability Int // "Стойкость ПК: 4" 
+  // Связь с создателем отчета
+  authorId Int // Внешний ключ для User
+  author   User @relation(fields: [authorId], references: [id])
+
+  // Раздел плавки 
+  meltNumber         Int
+  meltUnrs           Int
+  meltStartDateTime  DateTime
+  meltEndDateTime    DateTime
+  meltLadleStability Int
 
   // Раздел торкретирования
-  arrivalDate          DateTime // "Прибытие на участок: 28.05.2025 09:21"
+  arrivalDate          DateTime
   torcretingDate       DateTime
-  mixtures             String // "Маг-75" (форматированная строка)
+  mixtures             String
   assemblyHandoverDate DateTime
 
   // Раздел расположения термоблоков
-  thermalBlockDistance   Int // "0" (расстояние от днища)
-  thermalBlockProtrusion Int // "0" (длина выступающей части)
+  thermalBlockDistance   Int
+  thermalBlockProtrusion Int
   thermalBlockCondition  String?
 
   // Раздел сборки
@@ -35,25 +39,25 @@ model Report {
   doserCupInstaller         String
   stopperMonoblockType      String
   stopperMonoblockInstaller String
-  valve1                    String // "3 СТОП.МЕХ 1: 17"
-  valve2                    String // "2 СТОП.МЕХ 2: 6"
-  turbostop                 String? // "(АО «БКО»)"
+  valve1                    String
+  valve2                    String
+  turbostop                 String?
 
-  // Раздел разливки (единичный объект)
+  // Раздел подготовки к разливке (единичный объект)
   pouringHandoverDateTime DateTime
   heatingStartDateTime    DateTime
-  heatingDuration         String // "03:34:49"
-  operatorName            String // "Ефремов М.Б."
+  heatingDuration         String
+  operatorName            String
 
-  // Детали первой плавки (из "Начало" на картинке)
+  // Детали первой плавки при разливке
   pour1MeltNumber     Int
-  pour1Unrs           Int
+  pour1Unrs           Int // Добавил pour1Unrs для консистентности, если нужно
   pour1StartDateTime  DateTime
   pour1EndDateTime    DateTime
   pour1SeriesPosition String
   pour1LadleStability Int
 
-  // Детали второй плавки (из "Окончание" на картинке)
+  // Детали второй плавки при разливке
   pour2MeltNumber     Int
   pour2StartDateTime  DateTime
   pour2EndDateTime    DateTime
@@ -67,4 +71,31 @@ model Report {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+enum Role {
+  USER
+  REPORTER
+}
+
+model User {
+  id       Int    @id @default(autoincrement())
+  name     String @unique
+  email    String @unique
+  password String
+  role     Role   @default(USER)
+
+  // Связь с отчетами (один пользователь может создать много отчетов)
+  reports Report[]
+}
+
+model OptionItem {
+  id     Int    @id @default(autoincrement()) @map("PK_NSI_BUILD_ID") // Или просто @id @default(autoincrement()) если не нужно маппить на старый ID
+  name   String @map("PK_NSI_BUILD_NAME")
+  typeId Int    @map("PK_NSI_BUILD_PRZ") // 1: стакан дозатор, 2: стопор-моноблок, 3: смеси
+}
+
+model LadlePassportNumber {
+  id     Int    @id @default(autoincrement())
+  number String @unique
 }

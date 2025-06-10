@@ -1,13 +1,14 @@
 // components/ReportForm.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
-import Modal from "react-modal"; // Import Modal
-import {
-  mixtureOptions,
-  doserCupTypeOptions,
-  stopperMonoblockTypeOptions,
-} from "@/constants/reportFormOptions";
+import Modal from "react-modal";
+// Remove imports from "@/constants/reportFormOptions" as we'll fetch them
+// import {
+//   mixtureOptions,
+//   doserCupTypeOptions,
+//   stopperMonoblockTypeOptions,
+// } from "@/constants/reportFormOptions";
 
 import {
   convertDateTimeLocalToISO,
@@ -30,16 +31,26 @@ export default function ReportForm({
 }) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [modalIsOpen, setModalIsOpen] = useState(false); // State for modal visibility
-  const [modalMessage, setModalMessage] = useState(""); // State for modal message
-  const [modalSuccess, setModalSuccess] = useState(true); // State for success/error modal styling
-  const [createdReportId, setCreatedReportId] = useState<number | null>(null); // State to store the ID of the created report
+  const [modalIsOpen, setModalIsOpen] = useState(false);
+  const [modalMessage, setModalMessage] = useState("");
+  const [modalSuccess, setModalSuccess] = useState(true);
+  const [createdReportId, setCreatedReportId] = useState<number | null>(null);
+
+  // State for dynamically loaded options
+  const [ladlePassportNumbers, setLadlePassportNumbers] = useState<string[]>(
+    []
+  ); // New state for ladle passport numbers
+  const [mixtures, setMixtures] = useState<string[]>([]);
+  const [doserCupTypes, setDoserCupTypes] = useState<string[]>([]);
+  const [stopperMonoblockTypes, setStopperMonoblockTypes] = useState<string[]>(
+    []
+  );
 
   const initialDateTimeLocal = getInitialDateTimeForInput(0);
 
+  // Updated initialFormData to use the first fetched option
   const initialFormData = {
-    ladlePassportNumber: "№ 29 - 27 Тн",
-
+    ladlePassportNumber: "", // Will be set after fetching
     // Раздел плавки
     meltNumber: 29,
     meltUnrs: 27,
@@ -50,7 +61,7 @@ export default function ReportForm({
     // Раздел торкретирования
     arrivalDate: initialDateTimeLocal,
     torcretingDate: initialDateTimeLocal,
-    mixtures: mixtureOptions[0],
+    mixtures: "", // Will be set after fetching
     assemblyHandoverDate: initialDateTimeLocal,
 
     // Раздел расположения термоблоков
@@ -59,9 +70,9 @@ export default function ReportForm({
     thermalBlockCondition: "Удовлетворительное",
 
     // Раздел сборки
-    doserCupType: doserCupTypeOptions[0],
+    doserCupType: "", // Will be set after fetching
     doserCupInstaller: "Матюшев",
-    stopperMonoblockType: stopperMonoblockTypeOptions[0],
+    stopperMonoblockType: "", // Will be set after fetching
     stopperMonoblockInstaller: "Комилов",
     valve1: "3 СТОП.МЕХ 1: 17",
     valve2: "2 СТОП.МЕХ 2: 6",
@@ -95,6 +106,40 @@ export default function ReportForm({
   };
 
   const [formData, setFormData] = useState(initialFormData);
+
+  // Fetch options from the backend when the component mounts
+  useEffect(() => {
+    const fetchOptions = async () => {
+      try {
+        const [ladleRes, mixturesRes, doserCupsRes, stopperMonoblocksRes] =
+          await Promise.all([
+            axios.get<string[]>("/api/options/ladle-passports"), // Example endpoint for ladle passports
+            axios.get<string[]>("/api/options/mixtures"),
+            axios.get<string[]>("/api/options/doser-cup-types"),
+            axios.get<string[]>("/api/options/stopper-monoblock-types"),
+          ]);
+
+        setLadlePassportNumbers(ladleRes.data);
+        setMixtures(mixturesRes.data);
+        setDoserCupTypes(doserCupsRes.data);
+        setStopperMonoblockTypes(stopperMonoblocksRes.data);
+
+        // Set initial form values based on fetched data
+        setFormData((prev) => ({
+          ...prev,
+          ladlePassportNumber: ladleRes.data[0] || "",
+          mixtures: mixturesRes.data[0] || "",
+          doserCupType: doserCupsRes.data[0] || "",
+          stopperMonoblockType: stopperMonoblocksRes.data[0] || "",
+        }));
+      } catch (error) {
+        console.error("Error fetching options:", error);
+        // Handle error, e.g., display an error message to the user
+      }
+    };
+
+    fetchOptions();
+  }, []); // Empty dependency array means this runs once on mount
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -158,7 +203,6 @@ export default function ReportForm({
       ),
       pour2EndDateTime: convertDateTimeLocalToISO(formData.pour2EndDateTime),
 
-      // Ensure all Int fields are numbers
       meltNumber: Number(formData.meltNumber),
       meltUnrs: Number(formData.meltUnrs),
       meltLadleStability: Number(formData.meltLadleStability),
@@ -178,7 +222,7 @@ export default function ReportForm({
 
       if (response.status === 200 || response.status === 201) {
         const report = response.data;
-        openModal("Отчет успешно сохранен!", true, report.id); // Open success modal
+        openModal("Отчет успешно сохранен!", true, report.id);
       } else {
         const errorData = response.data;
         console.error("Server error data:", errorData);
@@ -200,7 +244,7 @@ export default function ReportForm({
       } else if (error instanceof Error) {
         errorMessage = error.message;
       }
-      openModal(errorMessage, false); // Open error modal
+      openModal(errorMessage, false);
     } finally {
       setIsSubmitting(false);
     }
@@ -236,15 +280,26 @@ export default function ReportForm({
             <label htmlFor="ladlePassportNumber" className={labelClasses}>
               Номер паспорта
             </label>
-            <input
-              type="text"
+            {/* Changed to select for dynamic options */}
+            <select
               id="ladlePassportNumber"
               name="ladlePassportNumber"
               value={formData.ladlePassportNumber}
               onChange={handleChange}
               className={inputBaseClasses}
               required
-            />
+            >
+              {/* Render fetched ladle passport numbers */}
+              {ladlePassportNumbers.length > 0 ? (
+                ladlePassportNumbers.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))
+              ) : (
+                <option value="">Загрузка номеров...</option>
+              )}
+            </select>
           </div>
 
           <div>
@@ -373,11 +428,16 @@ export default function ReportForm({
                   className={`${inputBaseClasses} bg-white`}
                   required
                 >
-                  {mixtureOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
+                  {/* Render fetched mixtures */}
+                  {mixtures.length > 0 ? (
+                    mixtures.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))
+                  ) : (
+                    <option value="">Загрузка смесей...</option>
+                  )}
                 </select>
               </div>
               <div>
@@ -460,11 +520,16 @@ export default function ReportForm({
                   className={`${inputBaseClasses} bg-white`}
                   required
                 >
-                  {doserCupTypeOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
+                  {/* Render fetched doser cup types */}
+                  {doserCupTypes.length > 0 ? (
+                    doserCupTypes.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))
+                  ) : (
+                    <option value="">Загрузка типов стаканов...</option>
+                  )}
                 </select>
               </div>
               <div>
@@ -494,11 +559,16 @@ export default function ReportForm({
                   className={`${inputBaseClasses} bg-white`}
                   required
                 >
-                  {stopperMonoblockTypeOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
+                  {/* Render fetched stopper monoblock types */}
+                  {stopperMonoblockTypes.length > 0 ? (
+                    stopperMonoblockTypes.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))
+                  ) : (
+                    <option value="">Загрузка типов стопоров...</option>
+                  )}
                 </select>
               </div>
               <div>
@@ -849,7 +919,7 @@ export default function ReportForm({
           <button
             type="submit"
             disabled={isSubmitting}
-            className={`w-full flex  justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-semibold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
+            className={`w-full flex  justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-semibold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
               ${
                 isSubmitting
                   ? "bg-slate-400 cursor-not-allowed"

@@ -16,8 +16,15 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
+import { useSession } from "next-auth/react"; // Import useSession
 
-// --- Reusable UI Components (no changes needed here from previous version) ---
+// --- Re-using your existing UI components ---
+// Button, Table, TableHeader, TableRow, TableHead, TableBody, TableCell,
+// DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, Input
+// (Assuming these are defined correctly above or imported from elsewhere)
+// For brevity, I'm omitting their full definitions here, but they should be present in your file.
+
+// --- Helper UI Components (from your code) ---
 const Button = ({
   variant,
   size,
@@ -38,7 +45,7 @@ const Button = ({
     case "ghost":
       variantStyle = "hover:bg-accent hover:text-accent-foreground";
       break;
-    default: // primary / default
+    default:
       variantStyle = "bg-blue-600 text-white hover:bg-blue-700";
   }
   const sizeStyle = size === "sm" ? "h-9 px-3" : "h-10 py-2 px-4";
@@ -54,7 +61,8 @@ const Button = ({
       disabled={disabled}
       {...props}
     >
-      {children}
+      {" "}
+      {children}{" "}
     </button>
   );
 };
@@ -116,7 +124,6 @@ const DropdownMenu = ({ children }: { children: React.ReactNode }) => {
   const [isOpen, setIsOpen] = useState(false);
   const triggerRef = React.useRef<HTMLDivElement>(null);
   const contentRef = React.useRef<HTMLDivElement>(null);
-
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -133,7 +140,6 @@ const DropdownMenu = ({ children }: { children: React.ReactNode }) => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-
   return (
     <div className="relative inline-block text-left">
       {React.Children.map(children, (child) => {
@@ -148,7 +154,6 @@ const DropdownMenu = ({ children }: { children: React.ReactNode }) => {
         }
         return null;
       })}
-
       {isOpen && (
         <div
           ref={contentRef}
@@ -173,14 +178,9 @@ const DropdownMenu = ({ children }: { children: React.ReactNode }) => {
 
 const DropdownMenuTrigger = React.forwardRef<
   HTMLButtonElement,
-  {
-    children: React.ReactNode;
-    asChild?: boolean;
-    onClick?: () => void;
-  }
+  { children: React.ReactNode; asChild?: boolean; onClick?: () => void }
 >(({ children, asChild, onClick, ...props }, ref) => {
   if (asChild && React.isValidElement(children)) {
-    // Only pass ref if the child is a valid React element and supports ref
     return React.cloneElement(children, {
       ...(onClick ? { onClick } : {}),
       ...props,
@@ -189,7 +189,8 @@ const DropdownMenuTrigger = React.forwardRef<
   }
   return (
     <button ref={ref} onClick={onClick} {...props}>
-      {children}
+      {" "}
+      {children}{" "}
     </button>
   );
 });
@@ -207,8 +208,8 @@ const DropdownMenuContent = ({
       React.isValidElement(child)
         ? React.cloneElement(child, {
             onClick: () => {
-              (child.props as any).onClick?.(); // Call original onClick if it exists
-              onClose?.(); // Then close the dropdown
+              (child.props as any).onClick?.();
+              onClose?.();
             },
           } as React.HTMLProps<HTMLElement>)
         : child
@@ -251,7 +252,7 @@ const Input = React.forwardRef<
 });
 Input.displayName = "Input";
 
-// Updated Report interface to reflect the desired "melt" fields
+// --- Report Interface ---
 interface Report {
   id: number;
   ladlePassportNumber: string;
@@ -264,6 +265,7 @@ interface Report {
   meltLadleStability: number;
 }
 
+// --- Main ReportsPage Component ---
 export default function ReportsPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
@@ -274,14 +276,20 @@ export default function ReportsPage() {
   );
   const [currentPage, setCurrentPage] = useState(1);
   const [totalReportsCount, setTotalReportsCount] = useState(0);
-  const [sortBy, setSortBy] = useState<keyof Report>("arrivalDate"); // Default sort by arrivalDate
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc"); // Default descending
+  const [sortBy, setSortBy] = useState<keyof Report>("arrivalDate");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   const itemsPerPage = 5;
 
+  // Use useSession to get user's session data, including the role
+  const { data: session, status } = useSession();
+
+  // Helper to determine if the user is a REPORTER
+  const isReporter =
+    status === "authenticated" && (session?.user as any)?.role === "REPORTER";
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    // Ensure date is valid before formatting
     if (isNaN(date.getTime())) {
       return "Invalid Date";
     }
@@ -311,7 +319,6 @@ export default function ReportsPage() {
           arrivalDate: report.arrivalDate,
           pouringHandoverDateTime: report.pouringHandoverDateTime,
           operatorName: report.operatorName,
-          // Make sure these field names match your Prisma schema exactly
           meltNumber: report.meltNumber,
           meltUnrs: report.meltUnrs,
           meltStartDateTime: report.meltStartDateTime,
@@ -345,7 +352,7 @@ export default function ReportsPage() {
     newFilter: "all" | "today" | "week" | "month"
   ) => {
     setFilter(newFilter);
-    setCurrentPage(1); // Reset to first page on filter change
+    setCurrentPage(1);
   };
 
   const handleSortChange = (field: keyof Report) => {
@@ -353,9 +360,9 @@ export default function ReportsPage() {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
       setSortBy(field);
-      setSortOrder("desc"); // Default to descending when changing sort field
+      setSortOrder("desc");
     }
-    setCurrentPage(1); // Reset to first page on sort change
+    setCurrentPage(1);
   };
 
   const getFilterLabel = (currentFilter: typeof filter) => {
@@ -402,13 +409,16 @@ export default function ReportsPage() {
         <h1 className="text-3xl font-bold text-slate-800">
           Отчеты по промковшам
         </h1>
-        <Link
-          href="/reports/new"
-          className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-semibold shadow-md hover:shadow-lg transition-all text-sm ${primaryButtonClasses}`}
-        >
-          <PlusCircle className="h-5 w-5" />
-          Новый отчет
-        </Link>
+        {/* Conditional rendering of the "Новый отчет" button */}
+        {isReporter && (
+          <Link
+            href="/reports/new"
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-semibold shadow-md hover:shadow-lg transition-all text-sm ${primaryButtonClasses}`}
+          >
+            <PlusCircle className="h-5 w-5" />
+            Новый отчет
+          </Link>
+        )}
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 items-center p-4 bg-white rounded-lg shadow">
@@ -425,7 +435,6 @@ export default function ReportsPage() {
           />
         </div>
 
-        {/* Filter Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -464,7 +473,6 @@ export default function ReportsPage() {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Sort by Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -476,7 +484,7 @@ export default function ReportsPage() {
               ) : (
                 <ArrowUpNarrowWide className="h-4 w-4 mr-2" />
               )}
-              {getSortLabel(sortBy)} {/* Display current sort field */}
+              {getSortLabel(sortBy)}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>

@@ -2,7 +2,7 @@
 import React from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { Report } from "@/types/reportTypes"; // Ensure this type is updated to reflect new fields
+import { Report } from "@/types/reportTypes";
 
 const ReportView: React.FC<{ report: Report }> = ({ report }) => {
   const formatDate = (date: Date | string) => {
@@ -98,7 +98,6 @@ const ReportView: React.FC<{ report: Report }> = ({ report }) => {
               <p>
                 <span className="font-medium">Стопор-моноблок:</span>{" "}
                 {report.stopperMonoblockType}{" "}
-                {/* Changed from stopperMonoblock */}
               </p>
               <p>
                 <span className="font-medium">Установщик стопора:</span>{" "}

@@ -1,7 +1,7 @@
 // components/PDFDownloadButton.tsx
 "use client";
 import React, { useState } from "react";
-import { Loader2 } from "lucide-react"; // Предполагается, что у вас установлен lucide-react
+import { Loader2 } from "lucide-react";
 
 interface PDFDownloadButtonProps {
   reportId: number;
@@ -15,8 +15,7 @@ const PDFDownloadButton: React.FC<PDFDownloadButtonProps> = ({ reportId }) => {
     setIsLoading(true);
     setError(null);
     try {
-      // Использование NEXT_PUBLIC_API_URL для формирования полного URL
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || ""; // Убедитесь, что эта переменная окружения установлена
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
       const response = await fetch(`${apiUrl}/api/reports/${reportId}/pdf`, {
         method: "GET",
         headers: {
@@ -39,7 +38,7 @@ const PDFDownloadButton: React.FC<PDFDownloadButtonProps> = ({ reportId }) => {
       document.body.appendChild(a);
       a.click();
       a.remove();
-      window.URL.revokeObjectURL(url); // Clean up the URL object
+      window.URL.revokeObjectURL(url);
 
       console.log("PDF downloaded successfully for reportId:", reportId);
     } catch (err: any) {

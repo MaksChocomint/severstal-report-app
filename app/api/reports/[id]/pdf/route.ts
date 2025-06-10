@@ -39,7 +39,7 @@ export async function GET(
       return format(d, "dd.MM.yyyy", { locale: ru });
     };
 
-    // --- MANUALLY CONSTRUCTING HTML HERE ---
+ 
     const htmlContent = `
       <div class="font-sans text-sm p-2 bg-white">
         <div class="text-center mb-6">
@@ -250,7 +250,7 @@ export async function GET(
         </div>
       </div>
     `;
-    // --- END OF MANUALLY CONSTRUCTED HTML ---
+    
 
     const fullHtml = `
       <!DOCTYPE html>
@@ -328,19 +328,16 @@ export async function GET(
 
     await browser.close();
 
-    // --- ENHANCED FILENAME SANITIZATION ---
-    // Remove any character that is not a basic Latin letter, number, hyphen, or underscore
-    // Also, specifically replace '№' with 'N' if it wasn't caught by the general regex.
+   
     const cleanedLadlePassportNumber = report.ladlePassportNumber
-      .replace(/[^a-zA-Z0-9\-_]/g, '') // Keep only alphanumeric, hyphen, and underscore
-      .replace(/№/g, 'N'); // Explicitly replace '№' if it somehow sneaks through or if preferred over the general regex
+      .replace(/[^a-zA-Z0-9\-_]/g, '') 
+      .replace(/№/g, 'N'); 
 
     const filename = `report-${cleanedLadlePassportNumber}.pdf`;
 
     return new NextResponse(Buffer.from(pdfBuffer), {
       headers: {
         'Content-Type': 'application/pdf',
-        // Ensure the filename is ASCII-safe for Content-Disposition
         'Content-Disposition': `attachment; filename="${encodeURIComponent(filename)}"`,
       },
     });

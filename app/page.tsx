@@ -1,9 +1,17 @@
 // app/page.tsx
-"use client";
+"use client"; // This component uses hooks, so it must be a client component
+
 import Link from "next/link";
-import { FaFileAlt } from "react-icons/fa"; // Using react-icons
+import { FaFileAlt } from "react-icons/fa";
+import { useSession } from "next-auth/react"; // Import useSession
 
 export default function Home() {
+  const { data: session, status } = useSession();
+
+  // Determine if the user is authenticated and has the 'REPORTER' role
+  const isReporter =
+    status === "authenticated" && (session?.user as any)?.role === "REPORTER";
+
   return (
     <div className="max-w-7xl mx-auto space-y-16 sm:space-y-24">
       <section className="text-center py-16 md:py-24 bg-slate-800 rounded-xl text-white shadow-2xl">
@@ -15,12 +23,15 @@ export default function Home() {
             Автоматизированное ведение документации сталелитейного производства
           </p>
           <div className="flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-6">
-            <Link
-              href="/reports/new"
-              className="inline-block bg-blue-600 text-white px-8 py-3 rounded-lg text-base sm:text-lg font-semibold hover:bg-blue-700 transition-colors duration-300 shadow-md hover:shadow-lg transform hover:scale-105 w-full sm:w-auto"
-            >
-              Создать новый отчет
-            </Link>
+            {/* Conditionally render the "Создать новый отчет" button */}
+            {isReporter && (
+              <Link
+                href="/reports/new"
+                className="inline-block bg-blue-600 text-white px-8 py-3 rounded-lg text-base sm:text-lg font-semibold hover:bg-blue-700 transition-colors duration-300 shadow-md hover:shadow-lg transform hover:scale-105 w-full sm:w-auto"
+              >
+                Создать новый отчет
+              </Link>
+            )}
             <Link
               href="/reports"
               className="inline-block bg-transparent border-2 border-blue-400 text-blue-300 px-8 py-3 rounded-lg text-base sm:text-lg font-semibold hover:bg-blue-400 hover:text-white transition-colors duration-300 shadow-sm hover:shadow-md w-full sm:w-auto"

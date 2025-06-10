@@ -1,14 +1,31 @@
+// app/api/reports/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'; // Ensure this path is correct
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+
+    // Ensure the user is authenticated and is a REPORTER
+    if (!session || !session.user || (session.user as any).role !== 'REPORTER') {
+      return NextResponse.json(
+        { error: 'Недостаточно прав для создания отчета. Только Репортеры могут добавлять отчеты.' },
+        { status: 403 } // 403 Forbidden status
+      );
+    }
+
     const data = await req.json();
 
-    // Создаем отчет с плавками
-    const report = await prisma.report.create({
-      data
+    // Attach the authorId from the session to the report data
+    const reportDataWithAuthor = {
+      ...data,
+      authorId: session.user.id, // Assuming session.user.id holds the user's ID
+    };
 
+    const report = await prisma.report.create({
+      data: reportDataWithAuthor,
     });
 
     return NextResponse.json(report, { status: 201 });
@@ -21,15 +38,16 @@ export async function POST(req: NextRequest) {
   }
 }
 
+// ... (your existing GET function)
 export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);
     const limit = parseInt(url.searchParams.get('limit') || '5', 10);
     const offset = parseInt(url.searchParams.get('offset') || '0', 10);
     const search = url.searchParams.get('search') || '';
-    const filter = url.searchParams.get('filter') || 'all'; // 'all', 'today', 'week', 'month'
-    const sortBy = url.searchParams.get('sortBy') || 'arrivalDate'; // Default sort field
-    const sortOrder = url.searchParams.get('sortOrder') || 'desc'; // Default sort order
+    const filter = url.searchParams.get('filter') || 'all';
+    const sortBy = url.searchParams.get('sortBy') || 'arrivalDate';
+    const sortOrder = url.searchParams.get('sortOrder') || 'desc';
 
     const whereClause: any = {};
 
@@ -53,15 +71,14 @@ export async function GET(req: NextRequest) {
         startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
       } else if (filter === 'week') {
-        // Calculate the start of the current week (Monday)
-        const currentDay = now.getDay(); // 0 (Sunday) to 6 (Saturday)
-        const diff = currentDay === 0 ? 6 : currentDay - 1; // Days to subtract to get to Monday
+        const currentDay = now.getDay();
+        const diff = currentDay === 0 ? 6 : currentDay - 1;
         startDate = new Date(now);
         startDate.setDate(now.getDate() - diff);
-        startDate.setHours(0, 0, 0, 0); // Start of the day
+        startDate.setHours(0, 0, 0, 0);
 
         endDate = new Date(startDate);
-        endDate.setDate(startDate.getDate() + 7); // End of the week (start of next Monday)
+        endDate.setDate(startDate.getDate() + 7);
       } else if (filter === 'month') {
         startDate = new Date(now.getFullYear(), now.getMonth(), 1);
         endDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
@@ -80,7 +97,7 @@ export async function GET(req: NextRequest) {
       take: limit,
       skip: offset,
       orderBy: {
-        [sortBy]: sortOrder, // Use dynamic sort field and order
+        [sortBy]: sortOrder,
       },
       select: {
         id: true,
@@ -92,6 +109,14 @@ export async function GET(req: NextRequest) {
         meltUnrs: true,
         meltStartDateTime: true,
         meltLadleStability: true,
+        // Include author if you want to display author details in GET requests
+        // author: {
+        //   select: {
+        //     id: true,
+        //     name: true,
+        //     email: true,
+        //   },
+        // },
       },
     });
 
