@@ -12,8 +12,7 @@ model Report {
   id                  Int    @id @default(autoincrement())
   ladlePassportNumber String
 
-  // Связь с создателем отчета
-  authorId Int // Внешний ключ для User
+  authorId Int
   author   User @relation(fields: [authorId], references: [id])
 
   // Раздел плавки 
@@ -85,7 +84,6 @@ model User {
   password String
   role     Role   @default(USER)
 
-  // Связь с отчетами 
   reports Report[]
 }
 
