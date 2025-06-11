@@ -42,7 +42,7 @@ export default function ReportForm({
   const initialDateTimeLocal = getInitialDateTimeForInput(0);
 
   const initialFormData = {
-    ladlePassportNumber: "", // Will be set after fetching
+    ladlePassportNumber: "",
     // Раздел плавки
     meltNumber: 29,
     meltUnrs: 27,
@@ -53,7 +53,7 @@ export default function ReportForm({
     // Раздел торкретирования
     arrivalDate: initialDateTimeLocal,
     torcretingDate: initialDateTimeLocal,
-    mixtures: "", // Will be set after fetching
+    mixtures: "",
     assemblyHandoverDate: initialDateTimeLocal,
 
     // Раздел расположения термоблоков
@@ -62,9 +62,9 @@ export default function ReportForm({
     thermalBlockCondition: "Удовлетворительное",
 
     // Раздел сборки
-    doserCupType: "", // Will be set after fetching
+    doserCupType: "",
     doserCupInstaller: "Матюшев",
-    stopperMonoblockType: "", // Will be set after fetching
+    stopperMonoblockType: "",
     stopperMonoblockInstaller: "Комилов",
     valve1: "3 СТОП.МЕХ 1: 17",
     valve2: "2 СТОП.МЕХ 2: 6",
@@ -99,7 +99,6 @@ export default function ReportForm({
 
   const [formData, setFormData] = useState(initialFormData);
 
-  // Fetch options from the backend when the component mounts
   useEffect(() => {
     const fetchOptions = async () => {
       try {
