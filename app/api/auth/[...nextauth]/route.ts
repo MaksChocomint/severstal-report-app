@@ -83,9 +83,9 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: "/login",
-    error: "/login?error=auth", // Страница для отображения ошибок
+    error: "/login?error=auth", 
   },
-  debug: process.env.NODE_ENV === "development", // Включить логи в development
+  debug: process.env.NODE_ENV === "development", 
 };
 
 const handler = NextAuth(authOptions);

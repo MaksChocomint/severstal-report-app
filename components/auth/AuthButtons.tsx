@@ -16,7 +16,6 @@ export default function AuthButtons() {
   return (
     <div className="flex items-center gap-3">
       {session ? (
-        // User is logged in
         <>
           {session.user?.name && (
             <span className="text-sm font-medium text-gray-700">
@@ -31,7 +30,6 @@ export default function AuthButtons() {
           </button>
         </>
       ) : (
-        // User is logged out
         <>
           <Link
             href="/login"

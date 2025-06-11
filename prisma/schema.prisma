@@ -1,6 +1,6 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../app/generated/prisma" // Убедитесь, что путь корректен
+  output   = "../app/generated/prisma"
 }
 
 datasource db {
@@ -43,7 +43,7 @@ model Report {
   valve2                    String
   turbostop                 String?
 
-  // Раздел подготовки к разливке (единичный объект)
+  // Раздел подготовки к разливке
   pouringHandoverDateTime DateTime
   heatingStartDateTime    DateTime
   heatingDuration         String
@@ -51,7 +51,7 @@ model Report {
 
   // Детали первой плавки при разливке
   pour1MeltNumber     Int
-  pour1Unrs           Int // Добавил pour1Unrs для консистентности, если нужно
+  pour1Unrs           Int
   pour1StartDateTime  DateTime
   pour1EndDateTime    DateTime
   pour1SeriesPosition String
@@ -85,14 +85,14 @@ model User {
   password String
   role     Role   @default(USER)
 
-  // Связь с отчетами (один пользователь может создать много отчетов)
+  // Связь с отчетами 
   reports Report[]
 }
 
 model OptionItem {
-  id     Int    @id @default(autoincrement()) @map("PK_NSI_BUILD_ID") // Или просто @id @default(autoincrement()) если не нужно маппить на старый ID
+  id     Int    @id @default(autoincrement()) @map("PK_NSI_BUILD_ID")
   name   String @map("PK_NSI_BUILD_NAME")
-  typeId Int    @map("PK_NSI_BUILD_PRZ") // 1: стакан дозатор, 2: стопор-моноблок, 3: смеси
+  typeId Int    @map("PK_NSI_BUILD_PRZ")
 }
 
 model LadlePassportNumber {

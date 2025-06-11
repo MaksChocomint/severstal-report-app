@@ -8,13 +8,13 @@ export async function GET() {
   try {
     const doserCupTypes = await prisma.optionItem.findMany({
       where: {
-        typeId: 1, // PK_NSI_BUILD_PRZ = 1 для "стакан дозатор"
+        typeId: 1, 
       },
       select: {
-        name: true, // Выбираем только поле 'name'
+        name: true, 
       },
       orderBy: {
-        name: 'asc', // Опционально: сортируем по имени
+        name: 'asc', 
       },
     });
 

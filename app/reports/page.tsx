@@ -16,15 +16,9 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import { useSession } from "next-auth/react"; // Import useSession
+import { useSession } from "next-auth/react";
+import Modal from "react-modal";
 
-// --- Re-using your existing UI components ---
-// Button, Table, TableHeader, TableRow, TableHead, TableBody, TableCell,
-// DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, Input
-// (Assuming these are defined correctly above or imported from elsewhere)
-// For brevity, I'm omitting their full definitions here, but they should be present in your file.
-
-// --- Helper UI Components (from your code) ---
 const Button = ({
   variant,
   size,
@@ -253,6 +247,7 @@ const Input = React.forwardRef<
 Input.displayName = "Input";
 
 // --- Report Interface ---
+// Ensure the 'id' field is a number as per your API response and component usage
 interface Report {
   id: number;
   ladlePassportNumber: string;
@@ -278,6 +273,10 @@ export default function ReportsPage() {
   const [totalReportsCount, setTotalReportsCount] = useState(0);
   const [sortBy, setSortBy] = useState<keyof Report>("arrivalDate");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
+  // State for the delete confirmation modal
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [reportToDelete, setReportToDelete] = useState<Report | null>(null);
 
   const itemsPerPage = 5;
 
@@ -337,8 +336,10 @@ export default function ReportsPage() {
   }, [currentPage, itemsPerPage, searchTerm, filter, sortBy, sortOrder]);
 
   useEffect(() => {
-    fetchReports();
-  }, [fetchReports]);
+    if (status !== "loading") {
+      fetchReports();
+    }
+  }, [fetchReports, status]);
 
   const totalPages = Math.ceil(totalReportsCount / itemsPerPage);
 
@@ -392,6 +393,49 @@ export default function ReportsPage() {
     }
   };
 
+  const handleContextMenu = (e: React.MouseEvent, report: Report) => {
+    if (isReporter) {
+      e.preventDefault();
+      setReportToDelete(report);
+      setShowDeleteModal(true);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (reportToDelete) {
+      try {
+        setLoading(true);
+        const response = await axios.delete(
+          `/api/reports/${reportToDelete.id}`
+        );
+
+        if (response.status === 200) {
+          setShowDeleteModal(false);
+          setReportToDelete(null);
+
+          fetchReports();
+        } else {
+          throw new Error(response.data.message || "Failed to delete report");
+        }
+      } catch (err: any) {
+        console.error("Error deleting report:", err);
+        alert(
+          `Ошибка при удалении отчета: ${
+            err.response?.data?.message || err.message || "Неизвестная ошибка"
+          }`
+        );
+        setShowDeleteModal(false);
+        setReportToDelete(null);
+        setLoading(false);
+      }
+    }
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteModal(false);
+    setReportToDelete(null);
+  };
+
   const primaryButtonClasses = "bg-blue-600 text-white hover:bg-blue-700";
   const outlineButtonClasses =
     "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50";
@@ -409,7 +453,7 @@ export default function ReportsPage() {
         <h1 className="text-3xl font-bold text-slate-800">
           Отчеты по промковшам
         </h1>
-        {/* Conditional rendering of the "Новый отчет" button */}
+
         {isReporter && (
           <Link
             href="/reports/new"
@@ -442,7 +486,7 @@ export default function ReportsPage() {
               className={`w-full md:w-auto ${outlineButtonClasses}`}
             >
               <FilterIcon className="h-4 w-4 mr-2" />
-              {getFilterLabel(filter)} {/* Display current filter */}
+              {getFilterLabel(filter)}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
@@ -577,7 +621,7 @@ export default function ReportsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading ? (
+            {loading || status === "loading" ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-8">
                   Загрузка отчетов...
@@ -596,7 +640,8 @@ export default function ReportsPage() {
               reports.map((report) => (
                 <TableRow
                   key={report.id}
-                  className="hover:bg-slate-50 transition-colors"
+                  className="hover:bg-slate-50 transition-colors group relative"
+                  onContextMenu={(e) => handleContextMenu(e, report)}
                 >
                   <TableCell
                     className={`font-medium text-slate-700 ${tableCellClasses}`}
@@ -664,7 +709,7 @@ export default function ReportsPage() {
           variant="outline"
           size="sm"
           onClick={() => handlePageChange(currentPage - 1)}
-          disabled={currentPage === 1 || loading}
+          disabled={currentPage === 1 || loading || status === "loading"}
           className={outlineButtonClasses}
         >
           <ChevronLeft className="h-4 w-4 mr-1" />
@@ -677,13 +722,54 @@ export default function ReportsPage() {
           variant="outline"
           size="sm"
           onClick={() => handlePageChange(currentPage + 1)}
-          disabled={currentPage === totalPages || totalPages === 0 || loading}
+          disabled={
+            currentPage === totalPages ||
+            totalPages === 0 ||
+            loading ||
+            status === "loading"
+          }
           className={outlineButtonClasses}
         >
           Вперед
           <ChevronRight className="h-4 w-4 ml-1" />
         </Button>
       </div>
+
+      <Modal
+        isOpen={showDeleteModal}
+        onRequestClose={cancelDelete}
+        contentLabel="Confirm Delete Report"
+        className="flex items-center justify-center p-4"
+        overlayClassName="fixed inset-0 bg-black/20 flex items-center justify-center"
+        ariaHideApp={false}
+      >
+        <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full mx-auto">
+          <h2 className="text-lg font-bold mb-4 text-red-600">
+            Подтвердите удаление
+          </h2>
+          <p className="mb-6 text-sm">
+            Вы уверены, что хотите удалить паспорт промковша{" "}
+            <span className="font-semibold">
+              {reportToDelete?.ladlePassportNumber}
+            </span>{" "}
+            навсегда? Это действие необратимо.
+          </p>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={cancelDelete}
+              className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition duration-200"
+            >
+              Отмена
+            </button>
+            <button
+              onClick={confirmDelete}
+              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition duration-200"
+            >
+              Удалить
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -6,13 +6,13 @@ export async function GET() {
   try {
     const stopperMonoblockTypes = await prisma.optionItem.findMany({
       where: {
-        typeId: 2, // PK_NSI_BUILD_PRZ = 2 для "стопор-моноблок"
+        typeId: 2, 
       },
       select: {
-        name: true, // Выбираем только поле 'name'
+        name: true, 
       },
       orderBy: {
-        name: 'asc', // Опционально: сортируем по имени
+        name: 'asc', 
       },
     });
 

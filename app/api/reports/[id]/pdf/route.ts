@@ -12,9 +12,9 @@ const executablePath = isProduction
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } } // `params` is already resolved here by Next.js
+  { params }: { params: { id: string } } 
 ) {
-  const reportId = parseInt(params.id, 10); // Accessing params.id directly is fine here.
+  const reportId = parseInt(params.id, 10); 
 
   if (isNaN(reportId)) {
     return NextResponse.json({ error: 'Invalid Report ID' }, { status: 400 });

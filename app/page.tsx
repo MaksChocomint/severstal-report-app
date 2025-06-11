@@ -1,14 +1,13 @@
 // app/page.tsx
-"use client"; // This component uses hooks, so it must be a client component
+"use client";
 
 import Link from "next/link";
 import { FaFileAlt } from "react-icons/fa";
-import { useSession } from "next-auth/react"; // Import useSession
+import { useSession } from "next-auth/react";
 
 export default function Home() {
   const { data: session, status } = useSession();
 
-  // Determine if the user is authenticated and has the 'REPORTER' role
   const isReporter =
     status === "authenticated" && (session?.user as any)?.role === "REPORTER";
 
@@ -23,7 +22,6 @@ export default function Home() {
             Автоматизированное ведение документации сталелитейного производства
           </p>
           <div className="flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-6">
-            {/* Conditionally render the "Создать новый отчет" button */}
             {isReporter && (
               <Link
                 href="/reports/new"

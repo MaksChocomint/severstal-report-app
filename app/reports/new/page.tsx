@@ -5,7 +5,7 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import ReportForm from "@/components/ReportForm";
 import BackArrow from "@/components/UI/BackArrow";
-import ReporterGuard from "@/components/auth/ReporterGuard"; // Import the ReporterGuard
+import ReporterGuard from "@/components/auth/ReporterGuard";
 
 const NewReportPage = () => {
   const router = useRouter();
@@ -15,7 +15,6 @@ const NewReportPage = () => {
   };
 
   return (
-    // Wrap the entire page content with ReporterGuard
     <ReporterGuard>
       <div className="max-w-5xl mx-auto">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">

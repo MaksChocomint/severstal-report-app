@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { signIn } from "next-auth/react"; // Import signIn from next-auth/react
+import { signIn } from "next-auth/react";
 
 export default function LoginPage() {
   const [nameOrEmail, setNameOrEmail] = useState("");
@@ -15,27 +15,25 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null); // Clear previous errors
+    setError(null);
     setIsLoading(true);
 
     try {
       // Use NextAuth.js signIn function
       const result = await signIn("credentials", {
-        redirect: false, // Prevent default redirect, we'll handle it manually
+        redirect: false,
         identifier: nameOrEmail,
         password,
       });
 
       if (result?.error) {
-        // If signIn returns an error (e.g., from your Credentials provider)
         setError(result.error);
       } else {
-        // Successful login, redirect to home page
         router.push("/");
       }
     } catch (err) {
       console.error("Login process error:", err);
-      // This catch block would primarily catch network errors before the signIn call
+
       setError("Произошла ошибка сети. Пожалуйста, попробуйте позже.");
     } finally {
       setIsLoading(false);

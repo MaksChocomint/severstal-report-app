@@ -6,10 +6,10 @@ export async function GET() {
   try {
     const ladlePassportNumbers = await prisma.ladlePassportNumber.findMany({
       select: {
-        number: true, // Выбираем только поле 'number'
+        number: true, 
       },
       orderBy: {
-        number: 'asc', // Опционально: сортируем по номеру
+        number: 'asc', 
       },
     });
 

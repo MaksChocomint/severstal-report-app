@@ -3,12 +3,6 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import Modal from "react-modal";
-// Remove imports from "@/constants/reportFormOptions" as we'll fetch them
-// import {
-//   mixtureOptions,
-//   doserCupTypeOptions,
-//   stopperMonoblockTypeOptions,
-// } from "@/constants/reportFormOptions";
 
 import {
   convertDateTimeLocalToISO,
@@ -36,10 +30,9 @@ export default function ReportForm({
   const [modalSuccess, setModalSuccess] = useState(true);
   const [createdReportId, setCreatedReportId] = useState<number | null>(null);
 
-  // State for dynamically loaded options
   const [ladlePassportNumbers, setLadlePassportNumbers] = useState<string[]>(
     []
-  ); // New state for ladle passport numbers
+  );
   const [mixtures, setMixtures] = useState<string[]>([]);
   const [doserCupTypes, setDoserCupTypes] = useState<string[]>([]);
   const [stopperMonoblockTypes, setStopperMonoblockTypes] = useState<string[]>(
@@ -48,7 +41,6 @@ export default function ReportForm({
 
   const initialDateTimeLocal = getInitialDateTimeForInput(0);
 
-  // Updated initialFormData to use the first fetched option
   const initialFormData = {
     ladlePassportNumber: "", // Will be set after fetching
     // Раздел плавки
@@ -113,7 +105,7 @@ export default function ReportForm({
       try {
         const [ladleRes, mixturesRes, doserCupsRes, stopperMonoblocksRes] =
           await Promise.all([
-            axios.get<string[]>("/api/options/ladle-passports"), // Example endpoint for ladle passports
+            axios.get<string[]>("/api/options/ladle-passports"),
             axios.get<string[]>("/api/options/mixtures"),
             axios.get<string[]>("/api/options/doser-cup-types"),
             axios.get<string[]>("/api/options/stopper-monoblock-types"),
@@ -124,7 +116,6 @@ export default function ReportForm({
         setDoserCupTypes(doserCupsRes.data);
         setStopperMonoblockTypes(stopperMonoblocksRes.data);
 
-        // Set initial form values based on fetched data
         setFormData((prev) => ({
           ...prev,
           ladlePassportNumber: ladleRes.data[0] || "",
@@ -134,12 +125,11 @@ export default function ReportForm({
         }));
       } catch (error) {
         console.error("Error fetching options:", error);
-        // Handle error, e.g., display an error message to the user
       }
     };
 
     fetchOptions();
-  }, []); // Empty dependency array means this runs once on mount
+  }, []);
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -280,7 +270,7 @@ export default function ReportForm({
             <label htmlFor="ladlePassportNumber" className={labelClasses}>
               Номер паспорта
             </label>
-            {/* Changed to select for dynamic options */}
+
             <select
               id="ladlePassportNumber"
               name="ladlePassportNumber"
@@ -289,7 +279,6 @@ export default function ReportForm({
               className={inputBaseClasses}
               required
             >
-              {/* Render fetched ladle passport numbers */}
               {ladlePassportNumbers.length > 0 ? (
                 ladlePassportNumbers.map((option) => (
                   <option key={option} value={option}>
@@ -914,12 +903,11 @@ export default function ReportForm({
           </div>
         </div>
 
-        {/* --- Кнопка отправки --- */}
-        <div className="mt-10 pt-6 border-t border-slate-200">
+        <div className="mt-10 pt-6 border-t border-slate-200 flex justify-center w-full">
           <button
             type="submit"
             disabled={isSubmitting}
-            className={`w-full flex  justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-semibold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
+            className={`w-full text-center flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-semibold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
               ${
                 isSubmitting
                   ? "bg-slate-400 cursor-not-allowed"
@@ -931,7 +919,6 @@ export default function ReportForm({
         </div>
       </form>
 
-      {/* Success/Error Modal */}
       <Modal
         ariaHideApp={false}
         isOpen={modalIsOpen}

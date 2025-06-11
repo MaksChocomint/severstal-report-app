@@ -2,13 +2,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'; // Ensure this path is correct
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'; 
 
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 
-    // Ensure the user is authenticated and is a REPORTER
+    
     if (!session || !session.user || (session.user as any).role !== 'REPORTER') {
       return NextResponse.json(
         { error: 'Недостаточно прав для создания отчета. Только Репортеры могут добавлять отчеты.' },
@@ -18,10 +18,10 @@ export async function POST(req: NextRequest) {
 
     const data = await req.json();
 
-    // Attach the authorId from the session to the report data
+    
     const reportDataWithAuthor = {
       ...data,
-      authorId: session.user.id, // Assuming session.user.id holds the user's ID
+      authorId: session.user.id, 
     };
 
     const report = await prisma.report.create({
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// ... (your existing GET function)
+
 export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);
@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Apply date filter
+ 
     if (filter !== 'all') {
       const now = new Date();
       let startDate: Date;
@@ -109,14 +109,6 @@ export async function GET(req: NextRequest) {
         meltUnrs: true,
         meltStartDateTime: true,
         meltLadleStability: true,
-        // Include author if you want to display author details in GET requests
-        // author: {
-        //   select: {
-        //     id: true,
-        //     name: true,
-        //     email: true,
-        //   },
-        // },
       },
     });
 

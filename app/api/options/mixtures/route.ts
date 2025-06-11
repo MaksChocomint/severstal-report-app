@@ -6,13 +6,13 @@ export async function GET() {
   try {
     const mixtures = await prisma.optionItem.findMany({
       where: {
-        typeId: 3, // PK_NSI_BUILD_PRZ = 3 для "смеси"
+        typeId: 3,
       },
       select: {
-        name: true, // Выбираем только поле 'name'
+        name: true, 
       },
       orderBy: {
-        name: 'asc', // Опционально: сортируем по имени
+        name: 'asc', 
       },
     });
 
